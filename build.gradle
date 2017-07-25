@@ -21,9 +21,26 @@ repositories {
 	mavenCentral()
 }
 
-
 dependencies {
 	compile('org.springframework.boot:spring-boot-starter-thymeleaf')
 	compileOnly('org.projectlombok:lombok')
 	testCompile('org.springframework.boot:spring-boot-starter-test')
 }
+
+task gulp_build(type: Exec) {
+	executable "./run_gulp_build.sh"
+}
+
+task syncFrontStatic(dependsOn: gulp_build, type: Sync) {
+	from 'front/build/static'
+	into 'src/main/resources/static'
+}
+
+task syncFrontTemplates(dependsOn: gulp_build, type: Sync) {
+	from 'front/build/templates'
+	into 'src/main/resources/templates'
+}
+
+task syncFront (dependsOn: [syncFrontStatic, syncFrontTemplates]) {}
+
+classes.dependsOn syncFront

@@ -11,6 +11,7 @@ const webpackConfig = require("./webpack.config");
 
 const dirInfo = {
     src: 'src',
+    build: 'build',
     dist: 'dist'
 };
 
@@ -18,34 +19,55 @@ gulp.task('clean:dist', function (cb) {
     rimraf(dirInfo.dist, cb);
 });
 
-gulp.task('compass', function () {
+gulp.task('clean:build', function (cb) {
+    rimraf(dirInfo.build, cb);
+});
+
+gulp.task('build:compass', function () {
     return gulp.src(dirInfo.src + '/styles/*.scss')
         .pipe($.compass({
-            css: dirInfo.dist + '/css',
+            css: dirInfo.build + '/static/css',
             sass: dirInfo.src + '/styles'
         }));
 });
 
-gulp.task('html', function () {
+gulp.task('build:html', function () {
     return gulp.src(dirInfo.src + '/**/*.html')
+        .pipe(gulp.dest(dirInfo.build + '/templates/'));
+});
+
+gulp.task('build:images', function () {
+    return gulp.src(dirInfo.src + '/images/**/*')
+        .pipe(gulp.dest(dirInfo.build + '/static/images'));
+});
+
+gulp.task("build:webpack", () => {
+  return webpackStream(webpackConfig, webpack)
+    .pipe(gulp.dest(dirInfo.build + '/static/scripts'));
+});
+
+gulp.task('build:all', function (cb) {
+    runSequence(
+        'build:webpack',
+        ['build:compass', 'build:html'],
+        'build:images',
+        cb
+    );
+});
+
+gulp.task('dist:static', function () {
+    return gulp.src(dirInfo.build + '/static/**/*.*')
         .pipe(gulp.dest(dirInfo.dist + '/'));
 });
 
-gulp.task('images', function () {
-    return gulp.src(dirInfo.app + '/images/**/*')
-        .pipe(gulp.dest(dirInfo.dist + '/static/images'));
+gulp.task('dist:templates', function () {
+    return gulp.src(dirInfo.build + '/templates/**/*.html')
+        .pipe(gulp.dest(dirInfo.dist + '/'));
 });
 
-gulp.task("webpack", () => {
-  return webpackStream(webpackConfig, webpack)
-    .pipe(gulp.dest(dirInfo.dist + '/scripts'));
-});
-
-gulp.task('prepare:dev', function (cb) {
+gulp.task('dist:all', function (cb) {
     runSequence(
-        'webpack',
-        ['compass', 'html'],
-        'images',
+        ['dist:static', 'dist:templates'],
         cb
     );
 });
@@ -74,15 +96,24 @@ gulp.task('watch:dist', function () {
 
 gulp.task('build', function (cb) {
     runSequence(
-        ['clean:dist'],
-        'prepare:dev',
+        'clean:build',
+        'build:all',
+        cb
+    );
+});
+
+gulp.task('dist', function (cb) {
+    runSequence(
+        'clean:dist',
+        'dist:all',
         cb
     );
 });
 
 gulp.task('default', function (cb) {
     runSequence(
-        ['build'],
+        'build',
+        'dist',
         'browserSync',
         ['watch:app:dev', 'watch:dist'],
         cb
